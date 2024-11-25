@@ -3,13 +3,13 @@ export default abstract class QueryManager {
 	private static lines: string[] = [];
 	public static data: { [tableName: string]: { [columnName: string]: any }[] } = {};
 	
-	public static async init(path: string, quiet: boolean) {
+	public static async init(path: string, quiet: boolean, specificTablesOnly: string[] | null) {
 		if (!quiet) { console.info(`Loading file from path: ${path}`); }
 		QueryManager.lines = await QueryManager.loadFile(path);
 		
 		if (QueryManager.lines.length > 0) {
 			if (!quiet) { console.info(`Loading ${QueryManager.lines.length} lines into memory`); }
-			QueryManager.loadDataIntoMemory();
+			QueryManager.loadDataIntoMemory(specificTablesOnly);
 			QueryManager.lines = [];
 		} else {
 			console.error('File is empty');
@@ -27,7 +27,7 @@ export default abstract class QueryManager {
 		}
 	}
 	
-	private static loadDataIntoMemory() {
+	private static loadDataIntoMemory(specificTablesOnly: string[] | null) {
 		let currentTable = '';
 		let currentTableStartIndex = -1;
 		
@@ -35,9 +35,14 @@ export default abstract class QueryManager {
 			if (QueryManager.lines[i].startsWith('CREATE TABLE')) {
 				const tableName = QueryManager.lines[i].split(' ')[2];
 				currentTable = tableName.replace(/`/g, '');
-				currentTableStartIndex = i;
-				QueryManager.data[currentTable] = [];
+				
+				if (specificTablesOnly == null || (specificTablesOnly != null && currentTable != '' && specificTablesOnly.includes(currentTable))) {
+					currentTableStartIndex = i;
+					QueryManager.data[currentTable] = [];
+				}
 			}
+			
+			if (specificTablesOnly != null && currentTable != '' && !specificTablesOnly.includes(currentTable)) { continue; }
 			
 			if (currentTable !== '' && QueryManager.lines[i].startsWith(') ENGINE=')) {
 				QueryManager.extractTableColumns(currentTable, currentTableStartIndex, i);
