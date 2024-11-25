@@ -12,15 +12,18 @@ const { values, positionals } = parseArgs({
 		},
 		quiet: {
 			type: 'boolean',
+		},
+		tables: {
+			type: 'string',
 		}
 	},
 	strict: true,
 	allowPositionals: true,
 });
 
-if (values.path == null) {
-	console.error('--path <path/to/mysqldump.sql> is required');
-} else {
+if (values.path == null) { console.error('--path <path/to/mysqldump.sql> is required'); }
+if (values.tables != null && values.tables.split(',').length == 0) { console.error('--tables <table1,table2,...> must have at least one table specified'); }
+else {
 	const quiet = values.quiet ?? false;
 	
 	if (!quiet) {
@@ -28,11 +31,13 @@ if (values.path == null) {
 		console.info(`Version: 1.0.0\n`);
 	}
 	
-	await QueryManager.init(values.path, quiet);
-	
-	if (Object.keys(QueryManager.data).length == 0) {
-		if (!quiet) { console.error('No data to process'); }
-	} else {
-		void CLIManager.init();
+	if (values.path != undefined) {
+		await QueryManager.init(values.path, quiet, values.tables === undefined ? null : values.tables.split(','));
+		
+		if (Object.keys(QueryManager.data).length == 0) {
+			if (!quiet) { console.error('No data to process'); }
+		} else {
+			void CLIManager.init();
+		}
 	}
 }
